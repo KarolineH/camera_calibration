@@ -3,35 +3,83 @@ import apriltag
 import os
 import numpy as np
 
-im_dir = "/auto/homes/kh790/rosws/src/camera_calibration/images/"
-files = os.listdir(im_dir)
 
-options = apriltag.DetectorOptions(families="tag36h11") # all calibration tags are tag36h11
-detector = apriltag.Detector(options)
+class CameraCalibration():
+    def __init__(self) -> None:
+        pass
 
-# example pattern of 4 rows and 6 columns, assuming 30mm tags and 10mm gaps between them, all lie in the z-plane:
-corner_array = np.array([[0, 0, 0], [40, 0, 0], [80, 0, 0], [120, 0, 0], [160, 0, 0], [200, 0, 0],
-                         [0, 40, 0], [40, 40, 0], [80, 40, 0], [120, 40, 0], [160, 40, 0], [200, 40, 0],
-                         [0, 80, 0], [40, 80, 0], [80, 80, 0], [120, 80, 0], [160, 80, 0], [200, 80, 0],
-                         [0, 120, 0], [40, 120, 0], [80, 120, 0], [120, 120, 0], [160, 120, 0], [200, 120, 0]], dtype=np.float32)
+    def init_calibrate(self, cameras, filename=None):
+        pass
 
-obj_points = []
-img_points = []
+    def colmap_calibrate(self, in_dir):
+        pass
 
-for image in files:
-    img = cv2.imread(im_dir + image)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    def april_tag_calibration(self, in_dir):
+        """
+        Calibrate the camera using AprilTags.
+        :param in_dir: The directory containing the images used for calibration.
+        :param cam_id: The unique camera ID, e.g. a serial number.
+        :return: dict of intrinics (incl. RMS re-projection error, camera matrix, distortion coefficients), estimated rotation vectors and translation vectors for all provided images
+        """
+        # These parameters are specific to the printed calibration pattern used.
+        tag_family = "tag36h11" # All tags in the pattern are of the same tag family to distinguish them from other tags in the environment.
+        tag_spacing = 0.01  # in meters
+        tag_size = 0.03 # in meters
+        tag_layout = np.array([4,6]) # rows x columns
+        spacing = tag_spacing + tag_size
 
-    results = detector.detect(gray)
-    detected_ids = np.asarray([r.tag_id for r in results])
-    image_coords = np.asarray([r.corners[0,:] for r in results], dtype=np.float32)
-    world_coords = corner_array[detected_ids]
+        # create the detector
+        options = apriltag.DetectorOptions(families=tag_family)
+        detector = apriltag.Detector(options)
 
-    obj_points.append(world_coords)
-    img_points.append(image_coords)
+        # recreate the calibration pattern in 'world' coordinates
+        corner_array = np.array([[i * spacing, j * spacing, 0] for j in range(tag_layout[0]) for i in range(tag_layout[1])], dtype=np.float32)
 
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, gray.shape[::-1], None, None)
+        obj_points = []
+        img_points = []
 
-# cv2.imshow("Image", gray)
-# cv2.waitKey(0)
-# cv2.imwrite(im_dir + 'test.jpg', img)
+        for image in os.listdir(in_dir):
+            img = cv2.imread(in_dir + image)
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            # detect all tags in the image
+            # if only part of the pattern is visible, we still use all available tags
+            results = detector.detect(gray)
+            detected_ids = np.asarray([r.tag_id for r in results])
+            image_coords = np.asarray([r.corners[0,:] for r in results], dtype=np.float32)
+            world_coords = corner_array[detected_ids]
+
+            obj_points.append(world_coords)
+            img_points.append(image_coords)
+
+        # Calibrate the camera based on all detected tags in all provided images
+        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, gray.shape[::-1], None, None)
+        return ret, mtx, dist, rvecs, tvecs #RMS re-projection error, camera matrix, distortion coefficients, rotation vectors, translation vectors 
+    
+    def write_to_file(file_path, cam_id, ret, mtx, dist, rvecs, tvecs):
+        cam_parameters = {
+            "camera_id": cam_id,
+            "reprojection_error": ret,
+            "cam_matrix": mtx.tolist(),
+            "distortion_coeffs": dist.tolist(),
+            "last_rotation": rvecs[-1].tolist(),
+            "last_translation": tvecs[-1].tolist()
+        }
+
+        cams[cam_id] = cam_parameters
+        
+        with open(file_path, "w") as f:
+            json.dump(cams, f, indent=4)
+
+        return
+
+if __name__ == "__main__":
+
+    cc = CameraCalibration()
+    rp_error, intrinsic_matrix, distortion_coeff, rvecs, tvecs = cc.april_tag_calibration(in_dir = "/auto/homes/kh790/rosws/src/camera_calibration/images/")
+
+
+    files = os.listdir(im_dir)
+
+    # cv2.imshow("Image", gray)
+    # cv2.waitKey(0)
+    # cv2.imwrite(im_dir + 'test.jpg', img)
