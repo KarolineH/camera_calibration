@@ -9,6 +9,20 @@ class CameraCalibration():
         pass
 
     def init_calibrate(self, cameras, filename=None):
+        # Estimate intrinsics and extrinsics for all cameras
+        # write to file if filename is provided
+        # in real-world physical units
+        pass
+
+    def read_calibration(self, cameras, filename):
+        # Read intrinsics and extrinsics for all cameras from file
+        # adjust extrinsics to match current camera positions
+        # quick fine-tuning for example after a break in the experiment
+        pass
+
+    def update_calibration(self, cameras, old_extrinsics, delta):
+        # Update extrinsics for all cameras after a controlled external movement
+        # make sure to convert to the correct frame
         pass
 
     def colmap_calibrate(self, in_dir):
@@ -16,7 +30,7 @@ class CameraCalibration():
 
     def april_tag_calibration(self, in_dir):
         """
-        Calibrate the camera using AprilTags.
+        Calibrate a single camera using AprilTags.
         :param in_dir: The directory containing the images used for calibration.
         :param cam_id: The unique camera ID, e.g. a serial number.
         :return: dict of intrinics (incl. RMS re-projection error, camera matrix, distortion coefficients), estimated rotation vectors and translation vectors for all provided images
