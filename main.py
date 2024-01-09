@@ -27,15 +27,23 @@ class CameraCalibration():
 
     def colmap_calibrate(self, in_dir):
         pass
+    
+    def april_tag_cam_position(self, in_dir):
+        """
+        Determine the position of the camera in the world frame based on a pre-made pattern of AprilTags and previous calibration.
+        :param in_dir: The directory containing the images used for calibration.
+        :return: estimated rotation vectors and translation vectors for all provided images
+        """
+        return
 
     def april_tag_calibration(self, in_dir):
         """
-        Calibrate a single camera using AprilTags.
+        Calibrate cameras using a pre-made pattern of AprilTags.
         :param in_dir: The directory containing the images used for calibration.
-        :param cam_id: The unique camera ID, e.g. a serial number.
         :return: dict of intrinics (incl. RMS re-projection error, camera matrix, distortion coefficients), estimated rotation vectors and translation vectors for all provided images
         """
         # These parameters are specific to the printed calibration pattern used.
+        # The IDs of the tags are laid out in a grid pattern, so that the exact location can always be determined.
         tag_family = "tag36h11" # All tags in the pattern are of the same tag family to distinguish them from other tags in the environment.
         tag_spacing = 0.01  # in meters
         tag_size = 0.03 # in meters
@@ -47,6 +55,7 @@ class CameraCalibration():
         detector = apriltag.Detector(options)
 
         # recreate the calibration pattern in 'world' coordinates
+        # starting at the upper left corner of the pattern (origin) going first right in x direction, then down in y direction
         corner_array = np.array([[i * spacing, j * spacing, 0] for j in range(tag_layout[0]) for i in range(tag_layout[1])], dtype=np.float32)
 
         obj_points = []
@@ -66,7 +75,9 @@ class CameraCalibration():
             img_points.append(image_coords)
 
         # Calibrate the camera based on all detected tags in all provided images
-        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, gray.shape[::-1], None, None)
+        # For this initial calibration no cmaera matrix or distortion coefficients are provided
+        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, gray.shape[::-1], None, None) # arguments are object points, image points, image size, camera matrix, distortion coefficients
+         # the extrinsics are the rotation and translation vectors bring the pattern from object frame to camera frame, same as the position of the pattern in the camera frame
         return ret, mtx, dist, rvecs, tvecs #RMS re-projection error, camera matrix, distortion coefficients, rotation vectors, translation vectors 
     
     def write_to_file(file_path, cam_id, ret, mtx, dist, rvecs, tvecs):
