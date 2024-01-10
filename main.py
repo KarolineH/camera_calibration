@@ -12,6 +12,7 @@ class CameraCalibration():
         # Estimate intrinsics and extrinsics for all cameras
         # write to file if filename is provided
         # in real-world physical units
+        # Initial calibration can be slow and precise. 
         pass
 
     def read_calibration(self, cameras, filename):
@@ -25,7 +26,12 @@ class CameraCalibration():
         # make sure to convert to the correct frame
         pass
 
-    def colmap_calibrate(self, in_dir):
+    def colmap_calibration(self, in_dir):
+        """
+        Calibrate a single camera using images of a pre-made pattern of AprilTags.
+        :param in_dir: The directory containing the images used for calibration.
+        :return: ...
+        """
         pass
     
     def april_tag_cam_position(self, in_dir):
@@ -38,7 +44,7 @@ class CameraCalibration():
 
     def april_tag_calibration(self, in_dir):
         """
-        Calibrate cameras using a pre-made pattern of AprilTags.
+        Calibrate a single camera using images of a pre-made pattern of AprilTags.
         :param in_dir: The directory containing the images used for calibration.
         :return: dict of intrinics (incl. RMS re-projection error, camera matrix, distortion coefficients), estimated rotation vectors and translation vectors for all provided images
         """
@@ -78,7 +84,7 @@ class CameraCalibration():
         # For this initial calibration no cmaera matrix or distortion coefficients are provided
         ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, gray.shape[::-1], None, None) # arguments are object points, image points, image size, camera matrix, distortion coefficients
          # the extrinsics are the rotation and translation vectors bring the pattern from object frame to camera frame, same as the position of the pattern in the camera frame
-        return ret, mtx, dist, rvecs, tvecs #RMS re-projection error, camera matrix, distortion coefficients, rotation vectors, translation vectors 
+        return ret, mtx, dist, rvecs, tvecs # RMS re-projection error, camera matrix, distortion coefficients, rotation vectors, translation vectors 
     
     def write_to_file(file_path, cam_id, ret, mtx, dist, rvecs, tvecs):
         cam_parameters = {
@@ -100,7 +106,7 @@ class CameraCalibration():
 if __name__ == "__main__":
 
     cc = CameraCalibration()
-    rp_error, intrinsic_matrix, distortion_coeff, rvecs, tvecs = cc.april_tag_calibration(in_dir = "/auto/homes/kh790/rosws/src/camera_calibration/images/")
+    rp_error, intrinsic_matrix, distortion_coeff, rvecs, tvecs = cc.april_tag_calibration(in_dir = "/home/karo/rosws/src/camera_calibration/images/")
 
 
     files = os.listdir(im_dir)

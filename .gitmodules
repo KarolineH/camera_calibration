@@ -1,0 +1,3 @@
+[submodule "colmap_wrapper"]
+	path = colmap_wrapper
+	url = https://github.com/KarolineH/colmap_wrapper
