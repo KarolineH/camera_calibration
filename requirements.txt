@@ -1,2 +1,5 @@
 apriltag==0.0.16
 opencv-python
+scikit-image
+imageio == 2.4.0
+numpy

@@ -2,6 +2,7 @@ import cv2
 import apriltag
 import os
 import numpy as np
+from colmap_wrapper.llff.poses.pose_utils import gen_poses
 
 
 class CameraCalibration():
@@ -28,11 +29,14 @@ class CameraCalibration():
 
     def colmap_calibration(self, in_dir):
         """
-        Calibrate a single camera using images of a pre-made pattern of AprilTags.
+        Calibrate a single camera using scene images taken from the input directory.
         :param in_dir: The directory containing the images used for calibration.
         :return: ...
         """
-        pass
+
+        # THe data might need to be given in a certain structure, e.g. a subfolder for images
+        gen_poses(basedir=in_dir, match_type='exhaustive_matcher') # exhaustive_matcher or sequential_matcher
+        return
     
     def april_tag_cam_position(self, in_dir):
         """
@@ -106,7 +110,10 @@ class CameraCalibration():
 if __name__ == "__main__":
 
     cc = CameraCalibration()
-    rp_error, intrinsic_matrix, distortion_coeff, rvecs, tvecs = cc.april_tag_calibration(in_dir = "/home/karo/rosws/src/camera_calibration/images/")
+    #rp_error, intrinsic_matrix, distortion_coeff, rvecs, tvecs = cc.april_tag_calibration(in_dir = "/home/karo/rosws/src/camera_calibration/images/")
+
+
+    cc.colmap_calibration(in_dir = "/home/karoline/rosws/src/camera_calibration/data/")
 
 
     files = os.listdir(im_dir)
