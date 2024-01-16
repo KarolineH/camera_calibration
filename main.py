@@ -2,7 +2,8 @@ import cv2
 import apriltag
 import os
 import numpy as np
-from colmap_wrapper.llff.poses.pose_utils import gen_poses
+from colmap_wrapper.llff.poses.pose_utils import gen_poses, load_data
+from colmap_wrapper.llff.poses.colmap_read_model import read_cameras_binary
 
 
 class CameraCalibration():
@@ -34,9 +35,18 @@ class CameraCalibration():
         :return: ...
         """
 
-        # THe data might need to be given in a certain structure, e.g. a subfolder for images
-        gen_poses(basedir=in_dir, match_type='exhaustive_matcher') # exhaustive_matcher or sequential_matcher
-        return
+        # The input directory should contain a folder 'images' with all images used for calibration.
+        gen_poses(basedir=in_dir, match_type='sequential_matcher') # exhaustive_matcher or sequential_matcher
+
+        # Now retrieve the camera parameters from the colmap output
+        camerasfile = os.path.join(in_dir, 'sparse/0/cameras.bin')
+        camdata = read_cameras_binary(camerasfile)
+        list_of_keys = list(camdata.keys())
+        cam = camdata[list_of_keys[0]]
+
+        # Now retrieve the camera poses from the colmap output
+        poses,_,_ = load_data(in_dir)
+        return cam, poses
     
     def april_tag_cam_position(self, in_dir):
         """
@@ -112,8 +122,8 @@ if __name__ == "__main__":
     cc = CameraCalibration()
     #rp_error, intrinsic_matrix, distortion_coeff, rvecs, tvecs = cc.april_tag_calibration(in_dir = "/home/karo/rosws/src/camera_calibration/images/")
 
-
-    cc.colmap_calibration(in_dir = "/home/karoline/rosws/src/camera_calibration/data/")
+    cc.colmap_calibration(in_dir="/home/kh790/Desktop/")
+    #cc.colmap_calibration(in_dir = "/home/kh790/rosws/src/camera_calibration/scenedir/")
 
 
     files = os.listdir(im_dir)
