@@ -6,6 +6,14 @@
 *.mp4
 *.png
 
+# COLMAP outputs
+*.db
+*.bin
+*.db-shm
+*.db-wal
+colmap_output.txt
+project.ini
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -10,6 +10,8 @@ class CameraCalibration():
     def __init__(self) -> None:
         pass
 
+
+
     def init_calibrate(self, cameras, filename=None):
         # Estimate intrinsics and extrinsics for all cameras
         # write to file if filename is provided
@@ -30,19 +32,21 @@ class CameraCalibration():
 
     def colmap_calibration(self, in_dir):
         """
-        Calibrate a single camera using scene images taken from the input directory.
-        :param in_dir: The directory containing the images used for calibration.
+        Calibrate a single camera using multiple images taken of the same scene.
+        :param in_dir: The base directory containing a subfolder 'images'.
         :return: ...
         """
 
         # The input directory should contain a folder 'images' with all images used for calibration.
-        gen_poses(basedir=in_dir, match_type='sequential_matcher') # exhaustive_matcher or sequential_matcher
+        # OPENCV model yields fx, fy, cx, cy, k1, k2, p1, p2
+        # SIMPLE_RADIAL yields f, cx, cy, k
+        gen_poses(basedir=in_dir, match_type='sequential_matcher', model_type='OPENCV') # exhaustive_matcher or sequential_matcher
 
         # Now retrieve the camera parameters from the colmap output
         camerasfile = os.path.join(in_dir, 'sparse/0/cameras.bin')
         camdata = read_cameras_binary(camerasfile)
         list_of_keys = list(camdata.keys())
-        cam = camdata[list_of_keys[0]]
+        cam = camdata[list_of_keys[0]] 
 
         # Now retrieve the camera poses from the colmap output
         poses,_,_ = load_data(in_dir)
@@ -58,8 +62,8 @@ class CameraCalibration():
 
     def april_tag_calibration(self, in_dir):
         """
-        Calibrate a single camera using images of a pre-made pattern of AprilTags.
-        :param in_dir: The directory containing the images used for calibration.
+        Calibrate a single camera using multiple images of a pre-made pattern of AprilTags.
+        :param in_dir: The base directory for this calibration operation, containing a subfolder called 'images' holding the collection of images used for calibration.
         :return: dict of intrinics (incl. RMS re-projection error, camera matrix, distortion coefficients), estimated rotation vectors and translation vectors for all provided images
         """
         # These parameters are specific to the printed calibration pattern used.
@@ -80,9 +84,10 @@ class CameraCalibration():
 
         obj_points = []
         img_points = []
+        im_dir = in_dir + "images/"
 
-        for image in os.listdir(in_dir):
-            img = cv2.imread(in_dir + image)
+        for image in os.listdir(im_dir):
+            img = cv2.imread(im_dir + image)
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             # detect all tags in the image
             # if only part of the pattern is visible, we still use all available tags
@@ -97,7 +102,7 @@ class CameraCalibration():
         # Calibrate the camera based on all detected tags in all provided images
         # For this initial calibration no cmaera matrix or distortion coefficients are provided
         ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, gray.shape[::-1], None, None) # arguments are object points, image points, image size, camera matrix, distortion coefficients
-         # the extrinsics are the rotation and translation vectors bring the pattern from object frame to camera frame, same as the position of the pattern in the camera frame
+        # the extrinsics are the rotation and translation vectors bring the pattern from object frame to camera frame, same as the position of the pattern in the camera frame
         return ret, mtx, dist, rvecs, tvecs # RMS re-projection error, camera matrix, distortion coefficients, rotation vectors, translation vectors 
     
     def write_to_file(file_path, cam_id, ret, mtx, dist, rvecs, tvecs):
@@ -122,6 +127,7 @@ if __name__ == "__main__":
     cc = CameraCalibration()
     #rp_error, intrinsic_matrix, distortion_coeff, rvecs, tvecs = cc.april_tag_calibration(in_dir = "/home/karo/rosws/src/camera_calibration/images/")
 
+   # cc.april_tag_calibration(in_dir="/home/kh790/rosws/src/camera_calibration/tag_dir/")
     cc.colmap_calibration(in_dir="/home/kh790/Desktop/")
     #cc.colmap_calibration(in_dir = "/home/kh790/rosws/src/camera_calibration/scenedir/")
 
