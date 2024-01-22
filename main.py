@@ -2,6 +2,7 @@ import cv2
 import apriltag
 import os
 import numpy as np
+import yaml
 from colmap_wrapper.llff.poses.pose_utils import gen_poses, load_data
 from colmap_wrapper.llff.poses.colmap_read_model import read_cameras_binary
 
@@ -10,8 +11,6 @@ class CameraCalibration():
     def __init__(self) -> None:
         pass
 
-
-
     def init_calibrate(self, cameras, filename=None):
         # Estimate intrinsics and extrinsics for all cameras
         # write to file if filename is provided
@@ -19,16 +18,51 @@ class CameraCalibration():
         # Initial calibration can be slow and precise. 
         pass
 
-    def read_calibration(self, cameras, filename):
-        # Read intrinsics and extrinsics for all cameras from file
-        # adjust extrinsics to match current camera positions
-        # quick fine-tuning for example after a break in the experiment
-        pass
-
     def update_calibration(self, cameras, old_extrinsics, delta):
         # Update extrinsics for all cameras after a controlled external movement
         # make sure to convert to the correct frame
         pass
+
+    def undistort_cv(self, img, camera_matrix, distortion_coefficients):
+        # need height and width
+        newcameramtx, roi = cv.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
+        # undistort
+        dst = cv.undistort(img, mtx, dist, None, newcameramtx)
+        # crop the image
+        x, y, w, h = roi
+        dst = dst[y:y+h, x:x+w]
+
+        # OTHER METHOD
+        # undistort
+        mapx, mapy = cv.initUndistortRectifyMap(mtx, dist, None, newcameramtx, (w,h), 5)
+        dst = cv.remap(img, mapx, mapy, cv.INTER_LINEAR)
+        # crop the image
+        x, y, w, h = roi
+        dst = dst[y:y+h, x:x+w]
+
+        #colmap also has an undistorted implemented
+        # ROS has a package for this as well, works directly on the incoming camera stream
+        # but can undistortion be done offline maybe?
+        return dst
+    
+    def reconstruct_3d(self):
+        # Reconstruct the 3D scene from the 2D images
+
+        image_file_names = []
+        poses = []
+
+        out_dir = '/path/sparse/model'
+        open(out_dir+'/cameras.txt', 'a')
+        open(out_dir+'/images.txt', 'a')
+        open(out_dir+'/points3D.txt', 'a')
+
+        # write a placeholder for the images.txt file
+        # Image list with two lines of data per image:
+        #   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME
+        #   POINTS2D[] as (X, Y, POINT3D_ID)
+        # every second line to be left blank
+        # more details here https://colmap.github.io/format.html#output-format
+        # and here https://colmap.github.io/faq.html#reconstruct-sparse-dense-model-from-known-camera-poses
 
     def colmap_calibration(self, in_dir):
         """
@@ -105,34 +139,54 @@ class CameraCalibration():
         # the extrinsics are the rotation and translation vectors bring the pattern from object frame to camera frame, same as the position of the pattern in the camera frame
         return ret, mtx, dist, rvecs, tvecs # RMS re-projection error, camera matrix, distortion coefficients, rotation vectors, translation vectors 
     
-    def write_to_file(file_path, cam_id, ret, mtx, dist, rvecs, tvecs):
-        cam_parameters = {
-            "camera_id": cam_id,
-            "reprojection_error": ret,
-            "cam_matrix": mtx.tolist(),
-            "distortion_coeffs": dist.tolist(),
-            "last_rotation": rvecs[-1].tolist(),
-            "last_translation": tvecs[-1].tolist()
-        }
+    def write_to_file(self, file_path, cam_ids, matrices, distortion_params):
+        """
+        Write the calibration parameters to a file.
+        :param file_path: The path to the output file.
+        :param cam_ids: A list of camera IDs (strings or integers).
+        :param matrices: A list of camera matrices (3x3 numpy arrays).
+        :param distortion_params: A list of distortion parameters (usually 5x1 numpy arrays).
+        :return: The data that was written to the file, a dictionary with the camera IDs as keys and the camera parameters as values.
+        """
 
-        cams[cam_id] = cam_parameters
-        
+        # TODO: Also write timestamp??
+
+        data = {}
+        for ID, mat, dist in zip(cam_ids, matrices, distortion_params):
+            cam_parameters = {
+                "camera_matrix": mat.tolist(),
+                "distortion_parameters": dist.tolist()
+            }
+            data[str(ID)] = cam_parameters
+
         with open(file_path, "w") as f:
-            json.dump(cams, f, indent=4)
+            yaml.dump(data, f)
+        return data 
 
-        return
+    def read_from_file(self, file_path):
+        """
+        Read intrinsics for all calibrated cameras from file
+        :param file_path: The path to the input file.
+        :return: A dictionary of dictionarties, with camera IDs as top-level keys.
+        """
+        with open(file_path, "r") as f:
+            data = yaml.load(f, Loader=yaml.FullLoader)
+        return data
 
 if __name__ == "__main__":
 
     cc = CameraCalibration()
     #rp_error, intrinsic_matrix, distortion_coeff, rvecs, tvecs = cc.april_tag_calibration(in_dir = "/home/karo/rosws/src/camera_calibration/images/")
 
-   # cc.april_tag_calibration(in_dir="/home/kh790/rosws/src/camera_calibration/tag_dir/")
-    cc.colmap_calibration(in_dir="/home/kh790/Desktop/")
+    cc.write_to_file("test.yaml", np.array([0,1]), [np.array([[1,2,3],[4,5,6],[7,8,9]]), np.array([[1,2,3],[4,5,6],[7,8,9]])], [np.array([1,2,3,4,5]), np.array([1,2,3,4,5])])
+    out = cc.read_from_file("test.yaml")
+    print(out)
+    #cc.april_tag_calibration(in_dir="/home/kh790/rosws/src/camera_calibration/tag_dir/")
+    #cc.colmap_calibration(in_dir="/home/kh790/Desktop/")
     #cc.colmap_calibration(in_dir = "/home/kh790/rosws/src/camera_calibration/scenedir/")
 
 
-    files = os.listdir(im_dir)
+    #files = os.listdir(im_dir)
 
     # cv2.imshow("Image", gray)
     # cv2.waitKey(0)
