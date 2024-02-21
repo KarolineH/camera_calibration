@@ -5,6 +5,7 @@ import numpy as np
 import yaml
 from colmap_wrapper.llff.poses.pose_utils import gen_poses, load_data, load_camera_poses
 from colmap_wrapper.llff.poses.colmap_read_model import read_cameras_binary
+import plotting
 
 
 class CameraCalibration():
@@ -79,6 +80,7 @@ class CameraCalibration():
         Will use the images in base_dir/images/ for calibration.
         Currently assumes sequential image series and the OpenCV camera model.
         Does not take any known camera poses, so the reference frame of the reconstructed model is NOT anchored to the real world frame.
+        The origin of the output poses' coordinate frame is most likely just a normalized center.
         """
         # First run COLMAP to get all camera parameters
         # Options:
@@ -105,7 +107,7 @@ class CameraCalibration():
         # from the regular COLMAP output orientation, this is rotated so that the targeted frame is: x-down, y-right, and x-backwards/towards the camera.
         # Each poses[:,:-1,0] is a 3x4 homogeneous transformation matrix, with the last row left out (because it is always [0,0,0,1])
         # w2c_mats and c2w_mats are avaliable also in pose_utils
-
+        plotting.plot_transforms(cam_in_world)
         return resolution, mtx, dist, cam_in_world
     
     def april_tag_cam_position(self, in_dir):
@@ -236,8 +238,8 @@ class CameraCalibration():
 
 if __name__ == "__main__":
 
-    cc = CameraCalibration(cam_id=0, base_dir="/home/karo/rosws/src/camera_calibration/")
-    cc.april_tag_calibration()
+    cc = CameraCalibration(cam_id=0, base_dir="/home/karo/Downloads/part_sequence/")
+    #cc.april_tag_calibration()
     # cc = CameraCalibration(cam_id=0, base_dir="/home/karo/Desktop/calibration_test/")
     # cc.colmap_calibration()
     
